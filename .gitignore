@@ -1,0 +1,19 @@
+# Dependencies (there are none — this project is intentionally dependency-free)
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local scratch / temp
+tmp/
+*.tmp
