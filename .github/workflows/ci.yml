@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Engine tests + flow validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No dependencies to install — the engine and tests use Node built-ins only.
+      - name: Run engine tests
+        run: node --test
+
+      - name: Validate example flow JSON
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const engine = require('./engine.js');
+            const dir = path.join(process.cwd(), 'examples');
+            const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+            if (files.length === 0) { console.error('No example flows found.'); process.exit(1); }
+            for (const f of files) {
+              const raw = fs.readFileSync(path.join(dir, f), 'utf8');
+              const flow = engine.deserializeFlow(raw); // throws if invalid
+              const result = engine.runFlow(flow);
+              if (!result.trace.length) { console.error('Empty trace: ' + f); process.exit(1); }
+              console.log('OK  ' + f + '  (' + result.trace.length + ' steps, ' + Object.keys(result.outputs).length + ' outputs)');
+            }
+          "
