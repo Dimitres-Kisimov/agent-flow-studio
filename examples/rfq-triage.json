@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "RFQ triage",
+  "nodes": [
+    {
+      "id": "n_trigger",
+      "type": "trigger",
+      "x": 60,
+      "y": 200,
+      "config": { "text": "New RFQ: 500 M8 hex bolts, need a quote urgently." }
+    },
+    {
+      "id": "n_agent",
+      "type": "agent",
+      "x": 320,
+      "y": 200,
+      "config": { "tools": ["lookup-price", "classify", "escalate", "search-kb"] }
+    },
+    {
+      "id": "n_cond",
+      "type": "condition",
+      "x": 580,
+      "y": 200,
+      "config": { "field": "text", "op": "contains", "value": "urgent" }
+    },
+    {
+      "id": "n_escalate",
+      "type": "tool",
+      "x": 840,
+      "y": 90,
+      "config": { "tool": "escalate" }
+    },
+    {
+      "id": "n_notify",
+      "type": "tool",
+      "x": 840,
+      "y": 320,
+      "config": { "tool": "notify" }
+    },
+    {
+      "id": "n_out_priority",
+      "type": "output",
+      "x": 1100,
+      "y": 90,
+      "config": { "label": "Priority queue" }
+    },
+    {
+      "id": "n_out_standard",
+      "type": "output",
+      "x": 1100,
+      "y": 320,
+      "config": { "label": "Standard queue" }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "n_trigger", "port": "out" }, "to": { "node": "n_agent", "port": "in" } },
+    { "id": "e2", "from": { "node": "n_agent", "port": "out" }, "to": { "node": "n_cond", "port": "in" } },
+    { "id": "e3", "from": { "node": "n_cond", "port": "true" }, "to": { "node": "n_escalate", "port": "in" } },
+    { "id": "e4", "from": { "node": "n_cond", "port": "false" }, "to": { "node": "n_notify", "port": "in" } },
+    { "id": "e5", "from": { "node": "n_escalate", "port": "out" }, "to": { "node": "n_out_priority", "port": "in" } },
+    { "id": "e6", "from": { "node": "n_notify", "port": "out" }, "to": { "node": "n_out_standard", "port": "in" } }
+  ]
+}

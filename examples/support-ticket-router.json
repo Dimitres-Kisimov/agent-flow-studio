@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "Support-ticket router",
+  "nodes": [
+    {
+      "id": "t_in",
+      "type": "trigger",
+      "x": 60,
+      "y": 220,
+      "config": { "text": "Customer says the invoice payment failed and wants a refund." }
+    },
+    {
+      "id": "t_classify",
+      "type": "tool",
+      "x": 300,
+      "y": 220,
+      "config": { "tool": "classify" }
+    },
+    {
+      "id": "t_agent",
+      "type": "agent",
+      "x": 540,
+      "y": 220,
+      "config": { "tools": ["billing-lookup", "search-kb", "escalate"] }
+    },
+    {
+      "id": "t_cond",
+      "type": "condition",
+      "x": 780,
+      "y": 220,
+      "config": { "field": "category", "op": "equals", "value": "billing" }
+    },
+    {
+      "id": "t_billing_notify",
+      "type": "tool",
+      "x": 1020,
+      "y": 110,
+      "config": { "tool": "notify" }
+    },
+    {
+      "id": "t_out_billing",
+      "type": "output",
+      "x": 1260,
+      "y": 110,
+      "config": { "label": "Billing team" }
+    },
+    {
+      "id": "t_out_general",
+      "type": "output",
+      "x": 1020,
+      "y": 340,
+      "config": { "label": "General support" }
+    }
+  ],
+  "edges": [
+    { "id": "r1", "from": { "node": "t_in", "port": "out" }, "to": { "node": "t_classify", "port": "in" } },
+    { "id": "r2", "from": { "node": "t_classify", "port": "out" }, "to": { "node": "t_agent", "port": "in" } },
+    { "id": "r3", "from": { "node": "t_agent", "port": "out" }, "to": { "node": "t_cond", "port": "in" } },
+    { "id": "r4", "from": { "node": "t_cond", "port": "true" }, "to": { "node": "t_billing_notify", "port": "in" } },
+    { "id": "r5", "from": { "node": "t_billing_notify", "port": "out" }, "to": { "node": "t_out_billing", "port": "in" } },
+    { "id": "r6", "from": { "node": "t_cond", "port": "false" }, "to": { "node": "t_out_general", "port": "in" } }
+  ]
+}
