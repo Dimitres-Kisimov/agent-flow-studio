@@ -17,3 +17,9 @@ Desktop.ini
 # Local scratch / temp
 tmp/
 *.tmp
+
+# Python (only scripts/make_onepager.py builds the PDF deliverable)
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
