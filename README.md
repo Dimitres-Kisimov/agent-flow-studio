@@ -2,6 +2,8 @@
 
 The business idea behind this: an ops team keeps filing small-automation requests — route these tickets, triage these emails — and each one waits weeks in the engineering backlog. Let business users assemble the simple ones on a canvas themselves and those flows land the same day instead, which on an illustrative model frees roughly **€47k of engineering time a year** and turns a multi-week wait into an afternoon (estimate — the arithmetic is in the business case). This repo is the working proof-of-concept of that pattern.
 
+![agent-flow-studio — node palette, canvas with the starter Trigger → LLM Agent → Output flow, and the inspector](docs/img/studio.png)
+
 **Business case:** [docs/BUSINESS_CASE.md](docs/BUSINESS_CASE.md) has the situation, the numbers and the ROI on one page, and [deliverables/executive_onepager.pdf](deliverables/executive_onepager.pdf) is the version a manager can circulate.
 
 A small visual agent-workflow builder that runs entirely in the browser. You drag nodes onto a canvas, wire the ports together, hit Run, and watch a mock agent walk the graph and pick tools step by step. No backend, no build step, no npm install, no API key.
