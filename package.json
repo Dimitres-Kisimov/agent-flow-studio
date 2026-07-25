@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A tiny, offline, zero-dependency visual agent-workflow builder — drag nodes, wire them up, and run flows with a deterministic mock reasoning engine.",
   "author": "Dimitres Kisimov",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "private": true,
   "type": "commonjs",
   "keywords": [

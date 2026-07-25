@@ -1,6 +1,6 @@
 # Credits
 
-**agent-flow-studio** was designed and built by **Dimitres Kisimov** (MIT License, 2026).
+**agent-flow-studio** was designed and built by **Dimitres Kisimov** (© 2026 Dimitres Kisimov, all rights reserved — see LICENSE).
 
 ## Dependencies
 

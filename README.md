@@ -45,4 +45,4 @@ The thing I'd add is a real provider behind the agent node — keep the mock as 
 
 ---
 
-Built by Dimitres Kisimov. MIT licensed.
+Built by Dimitres Kisimov. © 2026 Dimitres Kisimov — all rights reserved; published for portfolio review. See LICENSE.
