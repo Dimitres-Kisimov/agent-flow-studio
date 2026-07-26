@@ -31,7 +31,9 @@ You can also just double-click `index.html` — everything works offline except 
 
 ## Node types
 
-Five of them: `Trigger` emits a payload, `LLM Agent` reasons over its toolbelt and picks a tool, `Tool` is a pure transform (classify, lookup-price, escalate, and a few more), `Condition` routes down one branch, `Output` captures the result. Flows persist to `localStorage` and export/import as JSON.
+Five of them: `Trigger` emits a payload, `LLM Agent` reasons over its toolbelt and picks a tool, `Tool` is a pure transform (classify, lookup-price, escalate, and a few more), `Condition` routes down one branch, `Output` captures the result. After a run the captured payload is shown right on the Output node, not only in the trace panel.
+
+Flows persist to `localStorage` (manual Save; Clear/Load/Import warn before discarding unsaved edits) and export/import as JSON. The flow-name field in the top bar names the flow and drives the export filename. The test-input box next to Run overrides the Trigger text for a single run without touching the node's saved config — quick what-if testing.
 
 ## Where it stops
 
