@@ -24,7 +24,7 @@ The agent itself is a mock: `mockAgentReason` scans the payload and picks a tool
 
 ```bash
 python -m http.server 8000     # then open http://localhost:8000
-node --test                    # 16 tests, pure engine logic
+node --test                    # 29 tests: engine logic, undo history, snapshot rendering
 ```
 
 You can also just double-click `index.html` — everything works offline except loading the bundled example flows from the dropdown, because browsers block `fetch()` over `file://`. Serving the folder fixes that, or you can Import an example `.json` by hand. Two examples ship in `examples/`: an RFQ triage flow and a support-ticket router.
@@ -34,6 +34,10 @@ You can also just double-click `index.html` — everything works offline except 
 Five of them: `Trigger` emits a payload, `LLM Agent` reasons over its toolbelt and picks a tool, `Tool` is a pure transform (classify, lookup-price, escalate, and a few more), `Condition` routes down one branch, `Output` captures the result. After a run the captured payload is shown right on the Output node, not only in the trace panel.
 
 Flows persist to `localStorage` (manual Save; Clear/Load/Import warn before discarding unsaved edits) and export/import as JSON. The flow-name field in the top bar names the flow and drives the export filename. The test-input box next to Run overrides the Trigger text for a single run without touching the node's saved config — quick what-if testing.
+
+Every edit is undoable: `Ctrl+Z` / `Ctrl+Y` (or the Undo/Redo buttons) walk a 50-step history that covers adding, moving and deleting nodes, wiring changes, config edits (a burst of typing in one field counts as one step), and even Clear/Load/Import. The stack itself lives in `engine.js` (`createHistory`), so it's covered by the Node tests.
+
+The Snapshot buttons download a picture of the canvas — PNG for pasting into chat or slides, SVG if you want the vector. `snapshot.js` redraws the flow (cards, ports, wires, a caption with the flow name) as one self-contained SVG string with no external references, so it works offline and the PNG rasterization never taints the canvas. Like the engine, it's a pure function of the flow and runs identically in the browser and the test suite.
 
 ## Where it stops
 
