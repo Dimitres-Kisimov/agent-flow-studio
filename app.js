@@ -13,6 +13,7 @@
   'use strict';
 
   var E = window.AgentFlowEngine;
+  var S = window.AgentFlowSnapshot;
 
   /* --- Layout constants (must match styles.css) ------------------------- */
   var NODE_W = 172;
@@ -28,6 +29,57 @@
   var dirty = false;            // edits since the last Save / Load / example
 
   function markDirty() { dirty = true; }
+
+  /* --- Undo/redo ----------------------------------------------------------
+   * The stack itself is pure and lives in the engine (E.createHistory, node-
+   * tested). This file only decides WHEN to record a snapshot: once per
+   * committed mutation, captured BEFORE the change is applied. Bursts of
+   * typing in one inspector field coalesce into a single undo step via
+   * editKey, so Ctrl+Z reverts the whole edit, not one keystroke.
+   * ---------------------------------------------------------------------- */
+  var history = E.createHistory(50);
+  var lastEditKey = null;
+
+  function snapshotState() { return E.serializeFlow(flow); }
+
+  function commitHistory(pre, editKey) {
+    if (editKey && editKey === lastEditKey) return; // same typing burst — already recorded
+    history.push(pre);
+    lastEditKey = editKey || null;
+    updateUndoButtons();
+  }
+
+  function restoreState(json, msg) {
+    flow = E.deserializeFlow(json); // snapshots came from serializeFlow — always valid
+    dirty = true;                   // conservative: restored state may differ from the last Save
+    lastEditKey = null;
+    selected = null;
+    syncFlowNameInput();
+    renderInspector();
+    traceBody.innerHTML = '<p class="muted">Run the flow to see a step-by-step trace here.</p>';
+    renderAll();
+    updateUndoButtons();
+    setStatus(msg);
+  }
+
+  function undo() {
+    var prev = history.undo(snapshotState());
+    if (prev === null) { setStatus('Nothing to undo.'); return; }
+    restoreState(prev, 'Undone. (Ctrl+Y to redo)');
+  }
+
+  function redo() {
+    var next = history.redo(snapshotState());
+    if (next === null) { setStatus('Nothing to redo.'); return; }
+    restoreState(next, 'Redone.');
+  }
+
+  function updateUndoButtons() {
+    var u = document.getElementById('btn-undo');
+    var r = document.getElementById('btn-redo');
+    if (u) u.disabled = !history.canUndo();
+    if (r) r.disabled = !history.canRedo();
+  }
 
   /* Ask before an action that replaces the canvas while unsaved edits exist.
    * Save is manual, so Clear/Load/Import used to wipe work with no warning. */
@@ -96,6 +148,7 @@
 
   function addNode(type, x, y) {
     var spec = E.NODE_SPECS[type];
+    commitHistory(snapshotState());
     var node = {
       id: newId('node'),
       type: type,
@@ -113,6 +166,7 @@
 
   function deleteSelected() {
     if (!selected) return;
+    commitHistory(snapshotState());
     if (selected.kind === 'node') {
       flow.nodes = flow.nodes.filter(function (n) { return n.id !== selected.id; });
       flow.edges = flow.edges.filter(function (e) { return e.from.node !== selected.id && e.to.node !== selected.id; });
@@ -133,6 +187,7 @@
       return e.from.node === fromNode && e.from.port === fromPort && e.to.node === toNode && e.to.port === toPort;
     });
     if (dup) { setStatus('Already connected.'); return; }
+    var pre = snapshotState(); // recorded only if the connection commits
     // An input port accepts a single wire — replace any existing one.
     var before = flow.edges.length;
     var removed = flow.edges.filter(function (e) { return e.to.node === toNode && e.to.port === toPort; });
@@ -152,6 +207,7 @@
       setStatus('That connection would create a cycle — not allowed.');
       return;
     }
+    commitHistory(pre);
     markDirty();
     renderAll();
     setStatus(replaced
@@ -164,12 +220,14 @@
    * ===================================================================== */
   function select(kind, id) {
     selected = { kind: kind, id: id };
+    lastEditKey = null; // a new selection ends any typing burst
     renderInspector();
     renderSelectionClasses();
     if (kind === 'edge') setStatus('Wire selected — press Delete to remove it.');
   }
   function clearSelection() {
     selected = null;
+    lastEditKey = null;
     renderInspector();
     renderSelectionClasses();
   }
@@ -334,8 +392,11 @@
     var el = nodesLayer.querySelector('.node[data-id="' + node.id + '"]');
     el.classList.add('dragging');
     select('node', node.id);
+    var pre = snapshotState(); // one undo step per drag, recorded on first movement
+    var moved = false;
 
     function move(e) {
+      if (!moved) { moved = true; commitHistory(pre); }
       var r = nodesLayer.getBoundingClientRect();
       node.x = Math.max(0, Math.round((e.clientX - r.left) - offX));
       node.y = Math.max(0, Math.round((e.clientY - r.top) - offY));
@@ -456,6 +517,7 @@
       var el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', function () {
+        commitHistory(snapshotState(), id + ':' + node.id); // coalesce the typing burst
         node.config[key] = transform ? transform(el.value) : el.value;
         markDirty();
         refreshNodeBody(node);
@@ -483,6 +545,7 @@
       toolChips.addEventListener('click', function (ev) {
         var chip = ev.target.closest('.chip');
         if (!chip) return;
+        commitHistory(snapshotState());
         var t = chip.dataset.tool;
         var arr = node.config.tools || (node.config.tools = []);
         var i = arr.indexOf(t);
@@ -645,16 +708,57 @@
     if (!confirmDiscard('Load the saved flow')) { setStatus('Load cancelled.'); return; }
     loadFromJson(raw, 'browser storage');
   }
-  function exportFlow() {
-    var json = E.serializeFlow(flow);
-    var blob = new Blob([json], { type: 'application/json' });
+  function downloadBlob(blob, filename) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = (flow.name || 'flow').replace(/\s+/g, '-').toLowerCase() + '.json';
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    setStatus('Exported ' + a.download + '.');
+  }
+
+  function exportBasename() {
+    return (flow.name || 'flow').replace(/\s+/g, '-').toLowerCase();
+  }
+
+  function exportFlow() {
+    var json = E.serializeFlow(flow);
+    var name = exportBasename() + '.json';
+    downloadBlob(new Blob([json], { type: 'application/json' }), name);
+    setStatus('Exported ' + name + '.');
+  }
+
+  /* Snapshot: redraw the canvas as pure SVG (snapshot.js) and download it,
+   * either as-is or rasterized to PNG via an offline data: URI -> <canvas>. */
+  function snapshotFlow(format) {
+    if (!flow.nodes.length) { setStatus('Nothing to snapshot — add some nodes first.'); return; }
+    var snap = S.buildSnapshotSvg(flow);
+    if (format === 'svg') {
+      var svgName = exportBasename() + '.svg';
+      downloadBlob(new Blob([snap.svg], { type: 'image/svg+xml' }), svgName);
+      setStatus('Snapshot saved as ' + svgName + '.');
+      return;
+    }
+    var img = new Image();
+    img.onload = function () {
+      var scale = 2; // 2x for crisp text when pasted into slides/chat
+      var c = document.createElement('canvas');
+      c.width = snap.width * scale;
+      c.height = snap.height * scale;
+      var ctx = c.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      c.toBlob(function (blob) {
+        if (!blob) { setStatus('Snapshot failed — try the SVG button instead.'); return; }
+        var pngName = exportBasename() + '.png';
+        downloadBlob(blob, pngName);
+        setStatus('Snapshot saved as ' + pngName + ' (' + c.width + '×' + c.height + ').');
+      }, 'image/png');
+    };
+    img.onerror = function () { setStatus('Snapshot failed — try the SVG button instead.'); };
+    // data: URI keeps the canvas untainted (the SVG is self-contained, no
+    // external refs), so toBlob works — and nothing touches the network.
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(snap.svg);
   }
   function importFlow() {
     if (!confirmDiscard('Import a flow over the canvas')) { setStatus('Import cancelled.'); return; }
@@ -669,9 +773,12 @@
     ev.target.value = '';
   });
 
-  function loadFromJson(raw, sourceLabel) {
+  function loadFromJson(raw, sourceLabel, skipHistory) {
     try {
       var loaded = E.deserializeFlow(raw);
+      // Replacing the canvas is undoable like any other edit (except at boot,
+      // where there is no user work to go back to).
+      if (!skipHistory) commitHistory(snapshotState());
       flow = loaded;
       // Keep the id counter ahead of any imported ids to avoid collisions.
       idCounter = flow.nodes.length + flow.edges.length + 1;
@@ -703,6 +810,7 @@
 
   function clearCanvas() {
     if (!confirmDiscard('Clear the canvas')) { setStatus('Clear cancelled.'); return; }
+    if (flow.nodes.length || flow.edges.length) commitHistory(snapshotState()); // Clear is undoable
     flow = { name: 'Untitled flow', nodes: [], edges: [] };
     dirty = false;
     syncFlowNameInput();
@@ -736,18 +844,30 @@
     }
   });
 
-  /* Keyboard: Delete removes the selection. */
+  /* Keyboard: Delete removes the selection; Ctrl+Z / Ctrl+Y undo and redo. */
   document.addEventListener('keydown', function (ev) {
+    var tag = (ev.target.tagName || '').toLowerCase();
+    var typing = tag === 'input' || tag === 'textarea' || tag === 'select';
     if ((ev.key === 'Delete' || ev.key === 'Backspace') && selected) {
-      var tag = (ev.target.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return; // don't hijack typing
+      if (typing) return; // don't hijack typing
       ev.preventDefault();
       deleteSelected();
+      return;
+    }
+    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey) {
+      var k = (ev.key || '').toLowerCase();
+      if (typing) return; // leave the browser's native text-field undo alone
+      if (k === 'z' && !ev.shiftKey) { ev.preventDefault(); undo(); }
+      else if (k === 'y' || (k === 'z' && ev.shiftKey)) { ev.preventDefault(); redo(); }
     }
   });
 
   /* Toolbar buttons. */
   document.getElementById('btn-run').addEventListener('click', runFlow);
+  document.getElementById('btn-undo').addEventListener('click', undo);
+  document.getElementById('btn-redo').addEventListener('click', redo);
+  document.getElementById('btn-snap-png').addEventListener('click', function () { snapshotFlow('png'); });
+  document.getElementById('btn-snap-svg').addEventListener('click', function () { snapshotFlow('svg'); });
   document.getElementById('btn-clear').addEventListener('click', clearCanvas);
   document.getElementById('btn-save').addEventListener('click', saveLocal);
   document.getElementById('btn-load').addEventListener('click', loadLocal);
@@ -761,10 +881,16 @@
   /* Flow name field: bound to flow.name (drives the export filename too). */
   if (flowNameInput) {
     flowNameInput.addEventListener('input', function () {
+      commitHistory(snapshotState(), 'flow-name'); // coalesce the typing burst
       flow.name = flowNameInput.value.trim() || 'Untitled flow';
       markDirty();
     });
   }
+
+  /* Leaving a text field ends its typing burst, so coming back to the same
+   * field later starts a fresh undo step instead of coalescing with the old. */
+  inspectorBody.addEventListener('focusout', function () { lastEditKey = null; });
+  if (flowNameInput) flowNameInput.addEventListener('blur', function () { lastEditKey = null; });
 
   /* =====================================================================
    * Boot
@@ -778,10 +904,14 @@
   // so the status message says exactly that.)
   var saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
-    loadFromJson(saved, 'your last manual Save');
+    loadFromJson(saved, 'your last manual Save', true);
   } else {
     seedStarter();
   }
+  // Boot state (seed or restored Save) is the floor — nothing to undo past it.
+  history.clear();
+  lastEditKey = null;
+  updateUndoButtons();
 
   function seedStarter() {
     var t = addNode('trigger', 60, 160);

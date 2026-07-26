@@ -100,8 +100,14 @@ textarea { font-family: var(--mono); resize: vertical; min-height: 64px; width: 
   transition: background .12s ease, border-color .12s ease;
 }
 .btn:hover { background: #22303f; border-color: #38465a; }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn:disabled:hover { background: var(--bg-3); border-color: var(--line); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .btn-primary:hover { background: #3d7df0; }
+
+/* Labelled button group (the Snapshot PNG/SVG pair). */
+.btn-pair { display: flex; gap: 4px; }
+.btn-pair .btn { padding: 5px 10px; }
 
 /* --------------------------------------------------------------------------
  * Layout

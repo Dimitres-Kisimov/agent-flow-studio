@@ -36,11 +36,20 @@
                title="Run the flow with this text as the Trigger payload. The Trigger node's saved config is not changed." />
       </label>
       <button id="btn-run" class="btn btn-primary" title="Execute the flow">▶ Run</button>
+      <button id="btn-undo" class="btn" title="Undo the last edit (Ctrl+Z)" disabled>↩ Undo</button>
+      <button id="btn-redo" class="btn" title="Redo the undone edit (Ctrl+Y)" disabled>↪ Redo</button>
       <button id="btn-clear" class="btn" title="Clear the canvas">Clear</button>
       <button id="btn-save" class="btn" title="Save to browser storage">Save</button>
       <button id="btn-load" class="btn" title="Load from browser storage">Load</button>
       <button id="btn-export" class="btn" title="Download flow as JSON">Export</button>
       <button id="btn-import" class="btn" title="Import a JSON flow">Import</button>
+      <div class="field">
+        <span>Snapshot</span>
+        <div class="btn-pair">
+          <button id="btn-snap-png" class="btn" title="Download a PNG picture of the canvas — paste it into chat or slides">PNG</button>
+          <button id="btn-snap-svg" class="btn" title="Download the canvas as an SVG vector image">SVG</button>
+        </div>
+      </div>
       <input type="file" id="file-input" accept="application/json" hidden />
     </div>
   </header>
@@ -63,6 +72,8 @@
           <li>Press <kbd>Run</kbd> to execute and watch the trace.</li>
           <li>Type a Test input next to Run for a one-off what-if payload.</li>
           <li>Select a node/wire and press <kbd>Delete</kbd> to remove it.</li>
+          <li><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd> undo and redo any edit.</li>
+          <li>Snapshot downloads a PNG or SVG picture of the canvas.</li>
         </ol>
       </div>
     </aside>
@@ -113,8 +124,10 @@
     <span class="credit">© 2026 Dimitres Kisimov — all rights reserved (portfolio review) · offline · zero-dependency</span>
   </footer>
 
-  <!-- Engine first (shared with the Node tests), then the UI. -->
+  <!-- Engine first (shared with the Node tests), then the snapshot renderer
+       (also shared with the tests), then the UI. -->
   <script src="engine.js"></script>
+  <script src="snapshot.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
