@@ -181,6 +181,59 @@ test('deserialize rejects an edge to a missing node', () => {
 });
 
 /* --------------------------------------------------------------------------
+ * Undo/redo history (the stack behind the UI's Ctrl+Z)
+ * ------------------------------------------------------------------------ */
+test('history: undo returns the pre-change state, redo returns the undone one', () => {
+  const h = engine.createHistory(10);
+  h.push('v1');          // state was "v1" before the change to "v2"
+  assert.strictEqual(h.canUndo(), true);
+  assert.strictEqual(h.undo('v2'), 'v1');
+  assert.strictEqual(h.canRedo(), true);
+  assert.strictEqual(h.redo('v1'), 'v2');
+  assert.strictEqual(h.canRedo(), false);
+});
+
+test('history: a new change invalidates the redo stack', () => {
+  const h = engine.createHistory(10);
+  h.push('v1');
+  h.undo('v2');          // back at v1, redo holds v2
+  h.push('v1');          // new change made from v1
+  assert.strictEqual(h.canRedo(), false, 'redo must be cleared by a new push');
+  assert.strictEqual(h.undo('v3'), 'v1');
+});
+
+test('history: depth is bounded — the oldest snapshot is dropped', () => {
+  const h = engine.createHistory(3);
+  ['a', 'b', 'c', 'd'].forEach((s) => h.push(s));
+  assert.strictEqual(h.undo('e'), 'd');
+  assert.strictEqual(h.undo('d'), 'c');
+  assert.strictEqual(h.undo('c'), 'b');
+  assert.strictEqual(h.undo('b'), null, '"a" was trimmed by the limit');
+});
+
+test('history: undo/redo on empty stacks return null; clear empties both', () => {
+  const h = engine.createHistory(5);
+  assert.strictEqual(h.undo('x'), null);
+  assert.strictEqual(h.redo('x'), null);
+  h.push('v1');
+  h.undo('v2');
+  h.clear();
+  assert.strictEqual(h.canUndo(), false);
+  assert.strictEqual(h.canRedo(), false);
+});
+
+test('history: serialized flows survive an undo round-trip intact', () => {
+  const h = engine.createHistory(10);
+  const before = engine.serializeFlow(linearFlow());
+  h.push(before);
+  const mutated = linearFlow();
+  mutated.nodes.pop(); // "the user deleted a node"
+  const restored = engine.deserializeFlow(h.undo(engine.serializeFlow(mutated)));
+  assert.strictEqual(restored.nodes.length, 3);
+  assert.deepStrictEqual(engine.runFlow(restored).order, ['a', 'b', 'c']);
+});
+
+/* --------------------------------------------------------------------------
  * Shipped example flows
  * ------------------------------------------------------------------------ */
 const examplesDir = path.join(__dirname, '..', 'examples');

@@ -443,6 +443,44 @@
   }
 
   /* ===========================================================================
+   * Undo/redo history
+   * ---------------------------------------------------------------------------
+   * A bounded undo/redo stack over opaque state snapshots (strings — the UI
+   * feeds it serialized flows). Pure and DOM-free so the history behavior the
+   * UI relies on is testable in Node.
+   *
+   * Convention: push(state) records the state as it was BEFORE a change.
+   * undo(current)/redo(current) take the CURRENT state (so it can be parked on
+   * the opposite stack) and return the state to restore, or null if there is
+   * nothing to restore.
+   * ========================================================================= */
+  function createHistory(limit) {
+    var max = limit > 0 ? limit : 50;
+    var past = [];
+    var future = [];
+    return {
+      push: function (state) {
+        past.push(state);
+        if (past.length > max) past.shift(); // drop the oldest, keep depth bounded
+        future = [];                         // a new change invalidates redo
+      },
+      undo: function (current) {
+        if (!past.length) return null;
+        future.push(current);
+        return past.pop();
+      },
+      redo: function (current) {
+        if (!future.length) return null;
+        past.push(current);
+        return future.pop();
+      },
+      canUndo: function () { return past.length > 0; },
+      canRedo: function () { return future.length > 0; },
+      clear: function () { past = []; future = []; }
+    };
+  }
+
+  /* ===========================================================================
    * Small pure helpers
    * ========================================================================= */
   function lower(v) { return String(v == null ? '' : v).toLowerCase(); }
@@ -479,6 +517,7 @@
     serializeFlow: serializeFlow,
     deserializeFlow: deserializeFlow,
     validateFlow: validateFlow,
+    createHistory: createHistory,
     FLOW_VERSION: FLOW_VERSION
   };
 });
