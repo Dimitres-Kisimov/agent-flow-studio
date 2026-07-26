@@ -42,6 +42,7 @@ html, body {
   font-size: 14px;
   overflow: hidden;
 }
+body { display: flex; flex-direction: column; }
 
 kbd {
   font-family: var(--mono);
@@ -56,20 +57,24 @@ kbd {
  * Top bar
  * ------------------------------------------------------------------------ */
 .topbar {
-  height: 52px;
+  min-height: 52px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  padding: 0 16px;
+  gap: 8px 16px;
+  padding: 6px 16px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; align-items: baseline; gap: 8px; }
+.brand { display: flex; align-items: center; gap: 8px; }
 .brand-mark { color: var(--accent-2); font-size: 18px; }
 .brand-name { font-weight: 700; letter-spacing: .2px; }
 .brand-tag { color: var(--muted); font-size: 12px; }
+.flow-name-field { margin-left: 10px; }
+#flow-name { width: 150px; }
+#run-input { width: 200px; }
 
-.toolbar { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 .field { display: flex; flex-direction: column; font-size: 10px; color: var(--muted); }
 .field span { text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
 
@@ -104,7 +109,9 @@ textarea { font-family: var(--mono); resize: vertical; min-height: 64px; width: 
 .layout {
   display: grid;
   grid-template-columns: 220px 1fr 340px;
-  height: calc(100% - 52px - 28px);
+  /* Fill whatever the (possibly wrapped) top bar leaves over. */
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .panel-title {
@@ -220,6 +227,17 @@ marker path { fill: var(--wire); }
 .node-body { padding: 8px 10px; font-size: 11px; color: var(--muted); line-height: 1.4; min-height: 16px; }
 .node-body code { color: var(--text); font-family: var(--mono); }
 
+/* Captured payload shown on an Output node after a run. */
+.node-result { border-top: 1px dashed var(--line); padding: 6px 8px; cursor: default; }
+.node-result .nr-title {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--ok); margin-bottom: 3px;
+}
+.node-result pre {
+  margin: 0; font-family: var(--mono); font-size: 10px; color: var(--text);
+  max-height: 110px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+}
+
 /* Ports */
 .port {
   position: absolute;
@@ -299,6 +317,7 @@ marker path { fill: var(--wire); }
  * ------------------------------------------------------------------------ */
 .statusbar {
   height: 28px;
+  flex: 0 0 auto;
   display: flex; align-items: center; gap: 10px;
   padding: 0 14px;
   background: var(--panel);

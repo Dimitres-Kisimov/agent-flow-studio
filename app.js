@@ -25,6 +25,16 @@
   var selected = null;          // { kind: 'node'|'edge', id }
   var idCounter = 1;
   var pending = null;           // in-progress connection { fromNode, fromPort }
+  var dirty = false;            // edits since the last Save / Load / example
+
+  function markDirty() { dirty = true; }
+
+  /* Ask before an action that replaces the canvas while unsaved edits exist.
+   * Save is manual, so Clear/Load/Import used to wipe work with no warning. */
+  function confirmDiscard(action) {
+    if (!dirty || !flow.nodes.length) return true;
+    return window.confirm('You have unsaved changes. ' + action + ' and lose them?');
+  }
 
   /* --- DOM references ---------------------------------------------------- */
   var canvas = document.getElementById('canvas');
@@ -35,6 +45,13 @@
   var inspectorBody = document.getElementById('inspector-body');
   var traceBody = document.getElementById('trace-body');
   var statusEl = document.getElementById('status');
+  var flowNameInput = document.getElementById('flow-name');
+  var runInput = document.getElementById('run-input');
+
+  /* Keep the top-bar name field in sync with the model (load/clear/import). */
+  function syncFlowNameInput() {
+    if (flowNameInput) flowNameInput.value = flow.name || 'Untitled flow';
+  }
 
   /* =====================================================================
    * Palette
@@ -87,6 +104,7 @@
       config: JSON.parse(JSON.stringify(spec.defaultConfig))
     };
     flow.nodes.push(node);
+    markDirty();
     select('node', node.id);
     renderAll();
     setStatus('Added ' + spec.label + ' node.');
@@ -102,6 +120,7 @@
       flow.edges = flow.edges.filter(function (e) { return e.id !== selected.id; });
     }
     selected = null;
+    markDirty();
     renderInspector();
     renderAll();
     setStatus('Deleted.');
@@ -113,9 +132,12 @@
     var dup = flow.edges.some(function (e) {
       return e.from.node === fromNode && e.from.port === fromPort && e.to.node === toNode && e.to.port === toPort;
     });
-    if (dup) return;
+    if (dup) { setStatus('Already connected.'); return; }
     // An input port accepts a single wire — replace any existing one.
+    var before = flow.edges.length;
+    var removed = flow.edges.filter(function (e) { return e.to.node === toNode && e.to.port === toPort; });
     flow.edges = flow.edges.filter(function (e) { return !(e.to.node === toNode && e.to.port === toPort); });
+    var replaced = flow.edges.length !== before;
     var edge = { id: newId('edge'), from: { node: fromNode, port: fromPort }, to: { node: toNode, port: toPort } };
 
     // Reject if it would create a cycle (keep flows acyclic).
@@ -124,11 +146,17 @@
       E.topoSort(flow);
     } catch (err) {
       flow.edges.pop();
+      // Put back any wire we displaced — the connection was rejected.
+      flow.edges = flow.edges.concat(removed);
+      renderAll();
       setStatus('That connection would create a cycle — not allowed.');
       return;
     }
+    markDirty();
     renderAll();
-    setStatus('Connected.');
+    setStatus(replaced
+      ? 'Connected — replaced the wire that was on that input (one wire per input).'
+      : 'Connected.');
   }
 
   /* =====================================================================
@@ -138,6 +166,7 @@
     selected = { kind: kind, id: id };
     renderInspector();
     renderSelectionClasses();
+    if (kind === 'edge') setStatus('Wire selected — press Delete to remove it.');
   }
   function clearSelection() {
     selected = null;
@@ -157,6 +186,7 @@
    * Rendering — nodes
    * ===================================================================== */
   function nodeById(id) { return flow.nodes.filter(function (n) { return n.id === id; })[0]; }
+  function edgeById(id) { return flow.edges.filter(function (e) { return e.id === id; })[0]; }
 
   function bodySummary(node) {
     var c = node.config || {};
@@ -311,6 +341,7 @@
       node.y = Math.max(0, Math.round((e.clientY - r.top) - offY));
       el.style.left = node.x + 'px';
       el.style.top = node.y + 'px';
+      markDirty();
       renderWires();
     }
     function up() {
@@ -354,6 +385,22 @@
    * Inspector
    * ===================================================================== */
   function renderInspector() {
+    if (selected && selected.kind === 'edge') {
+      var edge = edgeById(selected.id);
+      if (!edge) { inspectorBody.innerHTML = '<p class="muted">—</p>'; return; }
+      var fromN = nodeById(edge.from.node);
+      var toN = nodeById(edge.to.node);
+      var fromL = fromN && E.NODE_SPECS[fromN.type] ? E.NODE_SPECS[fromN.type].label : '?';
+      var toL = toN && E.NODE_SPECS[toN.type] ? E.NODE_SPECS[toN.type].label : '?';
+      inspectorBody.innerHTML =
+        '<div class="insp-meta">Wire · ' + escapeHtml(edge.id) + '</div>' +
+        '<p class="muted">' + escapeHtml(fromL) + ' (' + escapeHtml(edge.from.port) + ') → ' +
+        escapeHtml(toL) + ' (' + escapeHtml(edge.to.port) + ')</p>' +
+        '<p class="muted">Press <kbd>Delete</kbd> or use the button below to remove it.</p>' +
+        '<button class="btn btn-danger" id="cfg-delete">Delete wire</button>';
+      document.getElementById('cfg-delete').addEventListener('click', deleteSelected);
+      return;
+    }
     if (!selected || selected.kind !== 'node') {
       inspectorBody.innerHTML = '<p class="muted">Select a node to edit its configuration.</p>';
       return;
@@ -381,7 +428,10 @@
       case 'condition':
         html += field('Field', '<input id="cfg-field" type="text" value="' + escapeHtml(node.config.field) + '" />');
         html += field('Operator', selectHtml('cfg-op', ['contains', 'equals', 'not-equals', 'gt', 'lt', 'exists'], node.config.op));
-        html += field('Value', '<input id="cfg-value" type="text" value="' + escapeHtml(node.config.value) + '" />');
+        // "exists" only checks that the field is present — it ignores Value,
+        // so hide the field rather than let typing into it do nothing.
+        html += '<div class="insp-field" id="cfg-value-field"' + (node.config.op === 'exists' ? ' style="display:none"' : '') + '>' +
+          '<label>Value</label><input id="cfg-value" type="text" value="' + escapeHtml(node.config.value) + '" /></div>';
         break;
       case 'output':
         html += field('Label', '<input id="cfg-label" type="text" value="' + escapeHtml(node.config.label || '') + '" />');
@@ -407,6 +457,7 @@
       if (!el) return;
       el.addEventListener('input', function () {
         node.config[key] = transform ? transform(el.value) : el.value;
+        markDirty();
         refreshNodeBody(node);
       });
     }
@@ -416,6 +467,16 @@
     onChange('cfg-op', 'op');
     onChange('cfg-value', 'value');
     onChange('cfg-label', 'label');
+
+    // The "exists" operator ignores Value — keep the field hidden while it is
+    // selected so nobody types into a control that does nothing.
+    var opEl = document.getElementById('cfg-op');
+    if (opEl) {
+      opEl.addEventListener('input', function () {
+        var vf = document.getElementById('cfg-value-field');
+        if (vf) vf.style.display = opEl.value === 'exists' ? 'none' : '';
+      });
+    }
 
     var toolChips = document.getElementById('cfg-tools');
     if (toolChips) {
@@ -427,6 +488,7 @@
         var i = arr.indexOf(t);
         if (i === -1) arr.push(t); else arr.splice(i, 1);
         chip.classList.toggle('on');
+        markDirty();
         refreshNodeBody(node);
       });
     }
@@ -447,17 +509,30 @@
 
   function runFlow() {
     if (!flow.nodes.length) { setStatus('Nothing to run — add some nodes first.'); return; }
+
+    // Optional what-if input: overrides every Trigger's payload text for THIS
+    // run only, on a copy of the flow — node configs are never touched.
+    var testText = runInput ? runInput.value.trim() : '';
+    var flowToRun = flow;
+    if (testText) {
+      flowToRun = JSON.parse(E.serializeFlow(flow));
+      flowToRun.nodes.forEach(function (n) {
+        if (n.type === 'trigger') n.config.text = testText;
+      });
+    }
+
     var result;
     try {
-      result = E.runFlow(flow);
+      result = E.runFlow(flowToRun);
     } catch (err) {
       setStatus('Run failed: ' + err.message);
       return;
     }
 
-    // Reset visuals.
+    // Reset visuals (including any captured-result boxes from the previous run).
     document.querySelectorAll('.node').forEach(function (el) { el.classList.remove('running', 'done', 'skipped'); });
     document.querySelectorAll('.wire-visible').forEach(function (el) { el.classList.remove('active'); });
+    document.querySelectorAll('.node-result').forEach(function (el) { el.remove(); });
     traceBody.innerHTML = '';
     setStatus('Running…');
 
@@ -469,7 +544,8 @@
     function step() {
       if (token !== runToken) return; // a newer run superseded this one
       if (i >= result.trace.length) {
-        setStatus('Done — ' + Object.keys(result.outputs).length + ' output(s) captured.');
+        setStatus('Done — ' + Object.keys(result.outputs).length + ' output(s) captured' +
+          (testText ? ' (ran with the test input; Trigger config untouched).' : '.'));
         return;
       }
       var s = result.trace[i++];
@@ -490,10 +566,27 @@
       setTimeout(function () {
         if (token !== runToken) return;
         if (el) { el.classList.remove('running'); el.classList.add('done'); }
+        // Show the captured payload right on the Output node so the result is
+        // visible on the canvas, not only inside the trace panel.
+        if (s.type === 'output' && s.status === 'ok') showNodeResult(s.nodeId, s.output);
         step();
       }, 480);
     }
     step();
+  }
+
+  /* Attach a small "captured" box to an Output node after a run. */
+  function showNodeResult(nodeId, payload) {
+    var el = nodesLayer.querySelector('.node[data-id="' + nodeId + '"]');
+    if (!el) return;
+    var box = el.querySelector('.node-result');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'node-result';
+      el.appendChild(box);
+    }
+    box.innerHTML = '<div class="nr-title">captured result</div>' +
+      '<pre>' + escapeHtml(JSON.stringify(payload, null, 1)) + '</pre>';
   }
 
   function computeActiveEdges(result) {
@@ -543,11 +636,13 @@
    * ===================================================================== */
   function saveLocal() {
     localStorage.setItem(STORAGE_KEY, E.serializeFlow(flow));
-    setStatus('Saved to browser storage.');
+    dirty = false;
+    setStatus('Saved "' + flow.name + '" to browser storage.');
   }
   function loadLocal() {
     var raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) { setStatus('Nothing saved yet.'); return; }
+    if (!confirmDiscard('Load the saved flow')) { setStatus('Load cancelled.'); return; }
     loadFromJson(raw, 'browser storage');
   }
   function exportFlow() {
@@ -561,7 +656,10 @@
     URL.revokeObjectURL(url);
     setStatus('Exported ' + a.download + '.');
   }
-  function importFlow() { document.getElementById('file-input').click(); }
+  function importFlow() {
+    if (!confirmDiscard('Import a flow over the canvas')) { setStatus('Import cancelled.'); return; }
+    document.getElementById('file-input').click();
+  }
   document.getElementById('file-input').addEventListener('change', function (ev) {
     var file = ev.target.files[0];
     if (!file) return;
@@ -577,6 +675,8 @@
       flow = loaded;
       // Keep the id counter ahead of any imported ids to avoid collisions.
       idCounter = flow.nodes.length + flow.edges.length + 1;
+      dirty = false;
+      syncFlowNameInput();
       clearSelection();
       traceBody.innerHTML = '<p class="muted">Run the flow to see a step-by-step trace here.</p>';
       renderAll();
@@ -588,6 +688,7 @@
 
   function loadExample(path) {
     if (!path) return;
+    if (!confirmDiscard('Load the example over the canvas')) { setStatus('Example load cancelled.'); return; }
     fetch(path)
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -601,7 +702,10 @@
   }
 
   function clearCanvas() {
+    if (!confirmDiscard('Clear the canvas')) { setStatus('Clear cancelled.'); return; }
     flow = { name: 'Untitled flow', nodes: [], edges: [] };
+    dirty = false;
+    syncFlowNameInput();
     clearSelection();
     traceBody.innerHTML = '<p class="muted">Run the flow to see a step-by-step trace here.</p>';
     renderAll();
@@ -654,17 +758,27 @@
     ev.target.value = '';
   });
 
+  /* Flow name field: bound to flow.name (drives the export filename too). */
+  if (flowNameInput) {
+    flowNameInput.addEventListener('input', function () {
+      flow.name = flowNameInput.value.trim() || 'Untitled flow';
+      markDirty();
+    });
+  }
+
   /* =====================================================================
    * Boot
    * ===================================================================== */
   renderPalette();
   renderAll();
 
-  // Try to restore the last session; otherwise seed with a tiny starter flow so
-  // the canvas is never intimidatingly blank.
+  // Restore the last manual Save if there is one; otherwise seed with a tiny
+  // starter flow so the canvas is never intimidatingly blank. (Only the Save
+  // button writes this key — edits made after the last Save are not restored,
+  // so the status message says exactly that.)
   var saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
-    loadFromJson(saved, 'last session');
+    loadFromJson(saved, 'your last manual Save');
   } else {
     seedStarter();
   }
@@ -676,6 +790,8 @@
     addEdge(t.id, 'out', a.id, 'in');
     addEdge(a.id, 'out', o.id, 'in');
     clearSelection();
+    dirty = false; // the seed is not user work — never guard-prompt over it
+    syncFlowNameInput();
     setStatus('Ready. Drag nodes from the left, wire ports, then press Run.');
   }
 })();

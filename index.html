@@ -15,7 +15,10 @@
     <div class="brand">
       <span class="brand-mark">◆</span>
       <span class="brand-name">agent-flow-studio</span>
-      <span class="brand-tag">visual agent-workflow builder</span>
+      <label class="field flow-name-field">
+        <span>Flow name</span>
+        <input type="text" id="flow-name" value="Untitled flow" title="Names the flow — used for the export filename and Save/Load messages" />
+      </label>
     </div>
 
     <div class="toolbar">
@@ -26,6 +29,11 @@
           <option value="examples/rfq-triage.json">RFQ triage</option>
           <option value="examples/support-ticket-router.json">Support-ticket router</option>
         </select>
+      </label>
+      <label class="field">
+        <span>Test input</span>
+        <input type="text" id="run-input" placeholder="optional — overrides Trigger text for this run"
+               title="Run the flow with this text as the Trigger payload. The Trigger node's saved config is not changed." />
       </label>
       <button id="btn-run" class="btn btn-primary" title="Execute the flow">▶ Run</button>
       <button id="btn-clear" class="btn" title="Clear the canvas">Clear</button>
@@ -53,6 +61,7 @@
           <li>Drag from an output port (right) to an input port (left) to wire them.</li>
           <li>Click a node to edit its config.</li>
           <li>Press <kbd>Run</kbd> to execute and watch the trace.</li>
+          <li>Type a Test input next to Run for a one-off what-if payload.</li>
           <li>Select a node/wire and press <kbd>Delete</kbd> to remove it.</li>
         </ol>
       </div>
