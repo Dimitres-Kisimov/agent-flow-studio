@@ -11,7 +11,7 @@
  *
  * It uses a tiny UMD shim to support both without a build step or dependencies.
  *
- * Author: Dimitres Kisimov — MIT License, 2026.
+ * Author: Dimitres Kisimov. © 2026 — all rights reserved (portfolio review only; see LICENSE).
  */
 (function (root, factory) {
   'use strict';

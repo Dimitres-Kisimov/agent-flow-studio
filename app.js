@@ -7,7 +7,7 @@
  * All graph *logic* lives in engine.js (shared with the Node tests). This file
  * only concerns itself with the DOM and user interaction.
  *
- * Author: Dimitres Kisimov — MIT License, 2026.
+ * Author: Dimitres Kisimov. © 2026 — all rights reserved (portfolio review only; see LICENSE).
  */
 (function () {
   'use strict';
