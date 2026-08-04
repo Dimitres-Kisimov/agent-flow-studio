@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "name": "Valid — linear",
+  "nodes": [
+    { "id": "t", "type": "trigger", "x": 60, "y": 160, "config": { "text": "New RFQ: 200 M8 bolts, please quote." } },
+    { "id": "a", "type": "agent", "x": 320, "y": 160, "config": { "tools": ["lookup-price", "classify"] } },
+    { "id": "o", "type": "output", "x": 580, "y": 160, "config": { "label": "Result" } }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "t", "port": "out" }, "to": { "node": "a", "port": "in" } },
+    { "id": "e2", "from": { "node": "a", "port": "out" }, "to": { "node": "o", "port": "in" } }
+  ]
+}

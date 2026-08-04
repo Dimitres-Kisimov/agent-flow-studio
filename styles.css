@@ -219,6 +219,8 @@ marker path { fill: var(--wire); }
 }
 .node.dragging { cursor: grabbing; box-shadow: 0 12px 28px rgba(0,0,0,.5); }
 .node.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+.node.lint-flag { outline: 2px dashed var(--warn); outline-offset: 1px; }
+.wire-visible.lint-flag { stroke: var(--warn); stroke-width: 3.5; }
 .node.running { outline: 2px solid var(--warn); box-shadow: 0 0 0 4px rgba(210,153,34,.25); }
 .node.done { outline: 2px solid var(--ok); }
 .node.skipped { opacity: .45; }
@@ -303,6 +305,8 @@ marker path { fill: var(--wire); }
 .trace-step.ok { border-left-color: var(--ok); }
 .trace-step.skipped { border-left-color: var(--muted); opacity: .7; }
 .trace-step.error { border-left-color: var(--err); }
+.trace-step.warning { border-left-color: var(--warn); }
+.trace-step.info { border-left-color: var(--accent); }
 .trace-step .ts-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .trace-step .ts-type { font-weight: 700; }
 .trace-step .ts-status { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }

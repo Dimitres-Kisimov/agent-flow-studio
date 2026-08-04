@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "Valid — branching",
+  "nodes": [
+    { "id": "t", "type": "trigger", "x": 60, "y": 200, "config": { "text": "This is urgent, the line is down." } },
+    { "id": "c", "type": "condition", "x": 320, "y": 200, "config": { "field": "text", "op": "contains", "value": "urgent" } },
+    { "id": "esc", "type": "tool", "x": 580, "y": 90, "config": { "tool": "escalate" } },
+    { "id": "note", "type": "tool", "x": 580, "y": 320, "config": { "tool": "notify" } },
+    { "id": "o_hi", "type": "output", "x": 840, "y": 90, "config": { "label": "Priority" } },
+    { "id": "o_lo", "type": "output", "x": 840, "y": 320, "config": { "label": "Standard" } }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "t", "port": "out" }, "to": { "node": "c", "port": "in" } },
+    { "id": "e2", "from": { "node": "c", "port": "true" }, "to": { "node": "esc", "port": "in" } },
+    { "id": "e3", "from": { "node": "c", "port": "false" }, "to": { "node": "note", "port": "in" } },
+    { "id": "e4", "from": { "node": "esc", "port": "out" }, "to": { "node": "o_hi", "port": "in" } },
+    { "id": "e5", "from": { "node": "note", "port": "out" }, "to": { "node": "o_lo", "port": "in" } }
+  ]
+}

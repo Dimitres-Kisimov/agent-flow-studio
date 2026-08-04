@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "Invalid — bad wiring",
+  "nodes": [
+    { "id": "t", "type": "trigger", "x": 60, "y": 160, "config": { "text": "hi" } },
+    { "id": "a", "type": "agent", "x": 320, "y": 160, "config": { "tools": ["classify"] } },
+    { "id": "o", "type": "output", "x": 580, "y": 160, "config": { "label": "Result" } }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "t", "port": "out" }, "to": { "node": "a", "port": "in" } },
+    { "id": "e2", "from": { "node": "a", "port": "out" }, "to": { "node": "o", "port": "in" } },
+    { "id": "e3", "from": { "node": "t", "port": "out" }, "to": { "node": "ghost", "port": "in" } },
+    { "id": "e4", "from": { "node": "a", "port": "result" }, "to": { "node": "o", "port": "in" } },
+    { "id": "e5", "from": { "node": "a", "port": "out" }, "to": { "node": "a", "port": "in" } }
+  ]
+}

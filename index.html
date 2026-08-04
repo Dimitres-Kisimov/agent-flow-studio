@@ -36,6 +36,7 @@
                title="Run the flow with this text as the Trigger payload. The Trigger node's saved config is not changed." />
       </label>
       <button id="btn-run" class="btn btn-primary" title="Execute the flow">▶ Run</button>
+      <button id="btn-lint" class="btn" title="Check the flow for structural problems (cycles, unreachable nodes, unwired inputs, missing start/end)">✓ Lint</button>
       <button id="btn-undo" class="btn" title="Undo the last edit (Ctrl+Z)" disabled>↩ Undo</button>
       <button id="btn-redo" class="btn" title="Redo the undone edit (Ctrl+Y)" disabled>↪ Redo</button>
       <button id="btn-clear" class="btn" title="Clear the canvas">Clear</button>
@@ -70,6 +71,7 @@
           <li>Drag from an output port (right) to an input port (left) to wire them.</li>
           <li>Click a node to edit its config.</li>
           <li>Press <kbd>Run</kbd> to execute and watch the trace.</li>
+          <li>Press <kbd>Lint</kbd> to check for structural problems before running.</li>
           <li>Type a Test input next to Run for a one-off what-if payload.</li>
           <li>Select a node/wire and press <kbd>Delete</kbd> to remove it.</li>
           <li><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd> undo and redo any edit.</li>
@@ -125,9 +127,10 @@
   </footer>
 
   <!-- Engine first (shared with the Node tests), then the snapshot renderer
-       (also shared with the tests), then the UI. -->
+       and the flow linter (also shared with the tests), then the UI. -->
   <script src="engine.js"></script>
   <script src="snapshot.js"></script>
+  <script src="linter.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

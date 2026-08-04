@@ -18,16 +18,21 @@ Two things took the real work, and both were on purpose kept dependency-free:
 
 **Running the graph.** The executor does a real topological sort (Kahn's algorithm) with cycle detection, then walks the nodes in order, highlights each one as it runs, lights up the live wires, and streams a trace. A `Condition` node prunes the branch that didn't fire so downstream nodes on the dead path don't execute. All of that lives in `engine.js`, which is a single UMD module. The exact same file runs in the browser and in the Node test suite, so what you see animate is the code the tests cover.
 
+**Linting the graph.** Before you run a flow it's worth knowing whether it's wired sensibly, so `linter.js` (another shared UMD module, node-tested) walks the same `{nodes, edges}` data and returns **structured diagnostics** — each with a severity (`error` / `warning`), a stable rule code, the node/edge/flow it concerns, and a message. It catches cycles, nodes unreachable from any Trigger, nodes whose required input is never wired, dead-end nodes whose output goes nowhere, edges to missing nodes or non-existent ports, a self-loop, a missing Trigger or Output, and unknown tools. The **Lint** button lists the findings in the trace panel and outlines the offending nodes on the canvas. This is honestly a *structural* check: it reasons about the graph and the node specs, not about payload contents, and it doesn't claim to prove a flow correct — but it turns the most common "why did nothing happen?" mistakes into a clear message. It is deliberately a superset of the engine's import-time `validateFlow`, which stays a hard, throw-on-load gate for the subset that makes a flow unloadable.
+
 The agent itself is a mock: `mockAgentReason` scans the payload and picks a tool from its toolbelt with a small keyword-rule table. It's the "observe → decide → act → narrate" shape of a real agent with the LLM swapped out for deterministic rules, which is what keeps the whole thing offline and testable.
 
 ## Running it
 
 ```bash
 python -m http.server 8000     # then open http://localhost:8000
-node --test                    # 29 tests: engine logic, undo history, snapshot rendering
+node --test                    # 44 tests: engine logic, undo history, snapshot rendering, flow linter
+node scripts/lint-flows.js     # lint the example flows + fixtures, print a summary
 ```
 
 You can also just double-click `index.html` — everything works offline except loading the bundled example flows from the dropdown, because browsers block `fetch()` over `file://`. Serving the folder fixes that, or you can Import an example `.json` by hand. Two examples ship in `examples/`: an RFQ triage flow and a support-ticket router.
+
+The linter's findings across the shipped example flows and a set of labelled valid/invalid fixtures are captured in [docs/FLOW_LINT_REPORT.md](docs/FLOW_LINT_REPORT.md) — a deterministic report (no timestamps, byte-identical across re-runs) that you regenerate with `node scripts/lint-flows.js --write`. The `invalid-*` fixtures are broken on purpose to exercise each rule; the report lists exactly what the linter flags on each.
 
 ## Node types
 

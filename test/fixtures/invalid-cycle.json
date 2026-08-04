@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "Invalid — cycle",
+  "nodes": [
+    { "id": "t", "type": "trigger", "x": 60, "y": 160, "config": { "text": "loop me" } },
+    { "id": "a", "type": "tool", "x": 320, "y": 160, "config": { "tool": "classify" } },
+    { "id": "b", "type": "tool", "x": 580, "y": 160, "config": { "tool": "escalate" } },
+    { "id": "o", "type": "output", "x": 320, "y": 320, "config": { "label": "Result" } }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "t", "port": "out" }, "to": { "node": "a", "port": "in" } },
+    { "id": "e2", "from": { "node": "a", "port": "out" }, "to": { "node": "b", "port": "in" } },
+    { "id": "e3", "from": { "node": "b", "port": "out" }, "to": { "node": "a", "port": "in" } },
+    { "id": "e4", "from": { "node": "t", "port": "out" }, "to": { "node": "o", "port": "in" } }
+  ]
+}

@@ -23,6 +23,9 @@ jobs:
       - name: Run engine tests
         run: node --test
 
+      - name: Lint flows and verify the committed report is up to date
+        run: node scripts/lint-flows.js --check
+
       - name: Validate example flow JSON
         run: |
           node -e "

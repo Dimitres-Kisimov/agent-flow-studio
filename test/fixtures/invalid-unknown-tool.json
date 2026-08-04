@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "name": "Invalid — unknown tools",
+  "nodes": [
+    { "id": "t", "type": "trigger", "x": 60, "y": 160, "config": { "text": "quote please" } },
+    { "id": "a", "type": "agent", "x": 320, "y": 160, "config": { "tools": ["classify", "teleport"] } },
+    { "id": "x", "type": "tool", "x": 580, "y": 160, "config": { "tool": "frobnicate" } },
+    { "id": "o", "type": "output", "x": 840, "y": 160, "config": { "label": "Result" } }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "t", "port": "out" }, "to": { "node": "a", "port": "in" } },
+    { "id": "e2", "from": { "node": "a", "port": "out" }, "to": { "node": "x", "port": "in" } },
+    { "id": "e3", "from": { "node": "x", "port": "out" }, "to": { "node": "o", "port": "in" } }
+  ]
+}

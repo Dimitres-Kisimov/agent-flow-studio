@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "name": "Invalid — no output, empty toolbelt",
+  "nodes": [
+    { "id": "t", "type": "trigger", "x": 60, "y": 160, "config": { "text": "hello" } },
+    { "id": "a", "type": "agent", "x": 320, "y": 160, "config": { "tools": [] } }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "t", "port": "out" }, "to": { "node": "a", "port": "in" } }
+  ]
+}

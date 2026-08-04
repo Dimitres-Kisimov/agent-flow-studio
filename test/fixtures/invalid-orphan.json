@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "Invalid — orphaned subgraph",
+  "nodes": [
+    { "id": "t", "type": "trigger", "x": 60, "y": 120, "config": { "text": "main line" } },
+    { "id": "o1", "type": "output", "x": 320, "y": 120, "config": { "label": "Main" } },
+    { "id": "a2", "type": "agent", "x": 60, "y": 320, "config": { "tools": ["classify"] } },
+    { "id": "o2", "type": "output", "x": 320, "y": 320, "config": { "label": "Orphaned" } }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "t", "port": "out" }, "to": { "node": "o1", "port": "in" } },
+    { "id": "e2", "from": { "node": "a2", "port": "out" }, "to": { "node": "o2", "port": "in" } }
+  ]
+}

@@ -14,6 +14,7 @@
 
   var E = window.AgentFlowEngine;
   var S = window.AgentFlowSnapshot;
+  var L = window.AgentFlowLinter;
 
   /* --- Layout constants (must match styles.css) ------------------------- */
   var NODE_W = 172;
@@ -593,8 +594,8 @@
     }
 
     // Reset visuals (including any captured-result boxes from the previous run).
-    document.querySelectorAll('.node').forEach(function (el) { el.classList.remove('running', 'done', 'skipped'); });
-    document.querySelectorAll('.wire-visible').forEach(function (el) { el.classList.remove('active'); });
+    document.querySelectorAll('.node').forEach(function (el) { el.classList.remove('running', 'done', 'skipped', 'lint-flag'); });
+    document.querySelectorAll('.wire-visible').forEach(function (el) { el.classList.remove('active', 'lint-flag'); });
     document.querySelectorAll('.node-result').forEach(function (el) { el.remove(); });
     traceBody.innerHTML = '';
     setStatus('Running…');
@@ -692,6 +693,63 @@
       (s.output ? '<pre>' + escapeHtml(JSON.stringify(s.output, null, 2)) + '</pre>' : '');
     traceBody.appendChild(div);
     traceBody.scrollTop = traceBody.scrollHeight;
+  }
+
+  /* =====================================================================
+   * Linting (static flow check — no execution)
+   * ---------------------------------------------------------------------
+   * Runs the shared linter (linter.js, node-tested) over the current flow and
+   * lists the structured diagnostics in the trace panel. Purely informational:
+   * it never modifies the flow. Offending nodes/edges get a temporary highlight
+   * so the finding is easy to locate on the canvas.
+   * ===================================================================== */
+  function lintCurrentFlow() {
+    if (!L) { setStatus('Linter not loaded.'); return; }
+    var result = L.lintFlow(flow);
+
+    // Clear any prior lint highlight and run visuals.
+    document.querySelectorAll('.lint-flag').forEach(function (el) { el.classList.remove('lint-flag'); });
+    traceBody.innerHTML = '';
+
+    var head = document.createElement('div');
+    head.className = 'trace-step ' + (result.errorCount ? 'error' : (result.warningCount ? 'warning' : 'ok'));
+    head.innerHTML =
+      '<div class="ts-head"><span class="ts-type">Lint</span>' +
+      '<span class="ts-status">' + (result.ok ? 'valid' : 'problems') + '</span></div>' +
+      '<div class="ts-detail">' + escapeHtml(L.summaryLine(result)) + '</div>';
+    traceBody.appendChild(head);
+
+    result.diagnostics.forEach(function (d) {
+      var div = document.createElement('div');
+      div.className = 'trace-step ' + d.severity;
+      var where = d.target.kind + (d.target.id ? ' ' + d.target.id : '');
+      div.innerHTML =
+        '<div class="ts-head"><span class="ts-type">' + escapeHtml(d.code) +
+        '<span class="ts-badge">' + escapeHtml(where) + '</span></span>' +
+        '<span class="ts-status">' + escapeHtml(d.severity) + '</span></div>' +
+        '<div class="ts-detail">' + escapeHtml(d.message) + '</div>';
+      traceBody.appendChild(div);
+      flagTarget(d.target);
+    });
+    traceBody.scrollTop = 0;
+
+    setStatus(result.ok
+      ? 'Lint: ' + L.summaryLine(result) + '.'
+      : 'Lint found ' + L.summaryLine(result) + ' — see the trace panel.');
+  }
+
+  /* Briefly outline the node or edge a diagnostic points at. */
+  function flagTarget(target) {
+    if (!target || !target.id) return;
+    var el = null;
+    if (target.kind === 'node') el = nodesLayer.querySelector('.node[data-id="' + cssEscape(target.id) + '"]');
+    else if (target.kind === 'edge') el = svg.querySelector('.wire-visible[data-id="' + cssEscape(target.id) + '"]');
+    if (el) el.classList.add('lint-flag');
+  }
+
+  /* Minimal attribute-selector escaping for ids (quotes/backslashes). */
+  function cssEscape(id) {
+    return String(id).replace(/["\\]/g, '\\$&');
   }
 
   /* =====================================================================
@@ -864,6 +922,7 @@
 
   /* Toolbar buttons. */
   document.getElementById('btn-run').addEventListener('click', runFlow);
+  document.getElementById('btn-lint').addEventListener('click', lintCurrentFlow);
   document.getElementById('btn-undo').addEventListener('click', undo);
   document.getElementById('btn-redo').addEventListener('click', redo);
   document.getElementById('btn-snap-png').addEventListener('click', function () { snapshotFlow('png'); });

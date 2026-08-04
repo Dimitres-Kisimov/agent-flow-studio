@@ -18,6 +18,9 @@
   ],
   "scripts": {
     "test": "node --test",
-    "serve": "python -m http.server 8000"
+    "serve": "python -m http.server 8000",
+    "lint:flows": "node scripts/lint-flows.js",
+    "lint:flows:write": "node scripts/lint-flows.js --write",
+    "lint:flows:check": "node scripts/lint-flows.js --check"
   }
 }
