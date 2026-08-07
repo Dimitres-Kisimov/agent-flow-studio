@@ -21,6 +21,9 @@
     "serve": "python -m http.server 8000",
     "lint:flows": "node scripts/lint-flows.js",
     "lint:flows:write": "node scripts/lint-flows.js --write",
-    "lint:flows:check": "node scripts/lint-flows.js --check"
+    "lint:flows:check": "node scripts/lint-flows.js --check",
+    "analyze:flows": "node scripts/analyze-flows.js",
+    "analyze:flows:write": "node scripts/analyze-flows.js --write",
+    "analyze:flows:check": "node scripts/analyze-flows.js --check"
   }
 }

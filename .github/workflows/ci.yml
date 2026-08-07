@@ -26,6 +26,9 @@ jobs:
       - name: Lint flows and verify the committed report is up to date
         run: node scripts/lint-flows.js --check
 
+      - name: Analyze flow dependencies and verify the committed report is up to date
+        run: node scripts/analyze-flows.js --check
+
       - name: Validate example flow JSON
         run: |
           node -e "

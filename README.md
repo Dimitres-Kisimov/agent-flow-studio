@@ -20,19 +20,22 @@ Two things took the real work, and both were on purpose kept dependency-free:
 
 **Linting the graph.** Before you run a flow it's worth knowing whether it's wired sensibly, so `linter.js` (another shared UMD module, node-tested) walks the same `{nodes, edges}` data and returns **structured diagnostics** — each with a severity (`error` / `warning`), a stable rule code, the node/edge/flow it concerns, and a message. It catches cycles, nodes unreachable from any Trigger, nodes whose required input is never wired, dead-end nodes whose output goes nowhere, edges to missing nodes or non-existent ports, a self-loop, a missing Trigger or Output, and unknown tools. The **Lint** button lists the findings in the trace panel and outlines the offending nodes on the canvas. This is honestly a *structural* check: it reasons about the graph and the node specs, not about payload contents, and it doesn't claim to prove a flow correct — but it turns the most common "why did nothing happen?" mistakes into a clear message. It is deliberately a superset of the engine's import-time `validateFlow`, which stays a hard, throw-on-load gate for the subset that makes a flow unloadable.
 
+**Analyzing the graph.** Once a flow is wired sensibly, the next question is *what depends on what*, and `analysis.js` (a third shared UMD module, node-tested) answers it. Over the same `{nodes, edges}` data it computes a **data-dependency / provenance** report: each node's direct dependencies and its full upstream/downstream closure, a topological run order that matches the engine's, the **stages** whose nodes have no dependency between them and so *could* run in parallel, the **critical path** (the fewest sequential stages the flow needs), and the **provenance** of every Output — which Trigger's payload can reach it. That last one is genuinely useful: it flags an Output that no Trigger feeds (an unreachable result) and shows the data lineage end to end. It is honest about being a *static* analysis: like the linter it treats both branches of a Condition as reachable, so it describes the data flow the wiring *permits*, not the single path a given input takes at run time, and it withholds the order-dependent fields when the graph isn't a DAG. It's complementary to the other two pieces — the engine *runs* one path, the linter checks *validity*, this describes the *shape*.
+
 The agent itself is a mock: `mockAgentReason` scans the payload and picks a tool from its toolbelt with a small keyword-rule table. It's the "observe → decide → act → narrate" shape of a real agent with the LLM swapped out for deterministic rules, which is what keeps the whole thing offline and testable.
 
 ## Running it
 
 ```bash
 python -m http.server 8000     # then open http://localhost:8000
-node --test                    # 44 tests: engine logic, undo history, snapshot rendering, flow linter
+node --test                    # 60 tests: engine logic, undo history, snapshot rendering, flow linter, dependency analyzer
 node scripts/lint-flows.js     # lint the example flows + fixtures, print a summary
+node scripts/analyze-flows.js  # data-dependency analysis of the same flows, print a summary
 ```
 
 You can also just double-click `index.html` — everything works offline except loading the bundled example flows from the dropdown, because browsers block `fetch()` over `file://`. Serving the folder fixes that, or you can Import an example `.json` by hand. Two examples ship in `examples/`: an RFQ triage flow and a support-ticket router.
 
-The linter's findings across the shipped example flows and a set of labelled valid/invalid fixtures are captured in [docs/FLOW_LINT_REPORT.md](docs/FLOW_LINT_REPORT.md) — a deterministic report (no timestamps, byte-identical across re-runs) that you regenerate with `node scripts/lint-flows.js --write`. The `invalid-*` fixtures are broken on purpose to exercise each rule; the report lists exactly what the linter flags on each.
+The linter's findings across the shipped example flows and a set of labelled valid/invalid fixtures are captured in [docs/FLOW_LINT_REPORT.md](docs/FLOW_LINT_REPORT.md) — a deterministic report (no timestamps, byte-identical across re-runs) that you regenerate with `node scripts/lint-flows.js --write`. The `invalid-*` fixtures are broken on purpose to exercise each rule; the report lists exactly what the linter flags on each. The dependency analyzer has an equivalent committed report, [docs/FLOW_DEPENDENCY_REPORT.md](docs/FLOW_DEPENDENCY_REPORT.md) (regenerate with `node scripts/analyze-flows.js --write`), listing the run order, parallel stages, critical path and provenance of the same flows. Both `--check` in CI so a stale report fails the build.
 
 ## Node types
 
